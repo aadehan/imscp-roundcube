@@ -283,10 +283,18 @@ sub uninstall
         $self->{'dbh'}->do(
             "DROP DATABASE IF EXISTS `@{ [ $::imscpConfig{'DATABASE_NAME'} . '_roundcube' ] }`"
         );
-
-        my ( $databaseUser ) = @{ $self->{'dbh'}->selectcol_arrayref(
-            "SELECT `value` FROM `config` WHERE `name` = 'ROUNDCUBE_SQL_USER'"
-        ) };
+        
+        my $databaseUser;
+        unless(exists $::imscpConfi{'SERVER_ID'}){
+			( $databaseUser ) = @{ $self->{'dbh'}->selectcol_arrayref(
+                "SELECT `value` FROM `config` WHERE `name` = 'ROUNDCUBE_SQL_USER'"
+            ) };
+		} else {
+            ( $databaseUser ) = @{ $self->{'dbh'}->selectcol_arrayref(
+                "SELECT `value` FROM `config` WHERE server_id=? AND `name` = 'ROUNDCUBE_SQL_USER'",
+            	undef, $::imscpConfig{'SERVER_ID'}
+            ) };
+        }
 
         if ( defined $databaseUser ) {
             $databaseUser = decryptRijndaelCBC(
@@ -302,9 +310,15 @@ sub uninstall
             }
         }
 
-        $self->{'dbh'}->do(
-            "DELETE FROM `config` WHERE `name` LIKE 'ROUNDCUBE_%'"
-        );
+		unless(exists $::imscpConfi{'SERVER_ID'}){
+			$self->{'dbh'}->do("DELETE FROM `config` WHERE `name` LIKE 'ROUNDCUBE_%'");
+		} else {
+            $self->{'dbh'}->do(
+            	"DELETE FROM `config` WHERE server_id=? AND `name` LIKE 'ROUNDCUBE_%'", 
+                undef, $::imscpConfig{'SERVER_ID'}
+            );
+        }
+        
     };
     if ( $@ ) {
         error( $@ );
@@ -443,15 +457,17 @@ sub _buildConfigFiles
 
     local $@;
     my $rs = eval {
-        my %config = @{ $self->{'dbh'}->selectcol_arrayref(
-            "
-                SELECT `name`, `value`
-                FROM `config`
-                WHERE `name`
-                LIKE 'ROUNDCUBE_%'
-            ",
-            { Columns => [ 1, 2 ] }
-        ) };
+    	my %config;
+        unless(exists $::imscpConfig{'SERVER_ID'}){
+        	%config = @{ $self->{'dbh'}->selectcol_arrayref(
+            	"SELECT `name`, `value` FROM `config` WHERE `name` LIKE 'ROUNDCUBE_%'", { Columns => [ 1, 2 ] }
+        	) };
+        } else {
+        	%config = @{ $self->{'dbh'}->selectcol_arrayref(
+            	"SELECT `name`, `value` FROM `config` WHERE `server_id`=? AND `name` LIKE 'ROUNDCUBE_%'",
+            	{ Columns => [ 1, 2 ] }, $::imscpConfig{'SERVER_ID'}
+        	) };
+        }
 
         ( $config{'ROUNDCUBE_DES_KEY'} = decryptRijndaelCBC(
             $::imscpDBKey, $::imscpDBiv, $config{'ROUNDCUBE_DES_KEY'} // ''
@@ -475,28 +491,25 @@ sub _buildConfigFiles
         );
 
         # Save generated values in database (encrypted)
-        $self->{'dbh'}->do(
-            '
-                INSERT INTO `config` (`name`,`value`)
-                VALUES (?,?),(?,?),(?,?)
-                ON DUPLICATE KEY UPDATE `name` = `name`
-            ',
-            undef,
-            'ROUNDCUBE_DES_KEY',
-            encryptRijndaelCBC(
-                $::imscpDBKey, $::imscpDBiv, $config{'ROUNDCUBE_DES_KEY'}
-            ),
-            'ROUNDCUBE_SQL_USER',
-            encryptRijndaelCBC(
-                $::imscpDBKey, $::imscpDBiv, $config{'ROUNDCUBE_SQL_USER'}
-            ),
-            'ROUNDCUBE_SQL_USER_PASSWD',
-            encryptRijndaelCBC(
-                $::imscpDBKey,
-                $::imscpDBiv,
-                $config{'ROUNDCUBE_SQL_USER_PASSWD'}
-            )
+        my ($encKey, $encUser, $encPasswd) = (
+        	encryptRijndaelCBC($::imscpDBKey, $::imscpDBiv, $config{'ROUNDCUBE_DES_KEY'}),
+            encryptRijndaelCBC($::imscpDBKey, $::imscpDBiv, $config{'ROUNDCUBE_SQL_USER'}),
+            encryptRijndaelCBC($::imscpDBKey, $::imscpDBiv, $config{'ROUNDCUBE_SQL_USER_PASSWD'})
         );
+        unless($::imscpConfig{'SERVER_ID'}){
+            $self->{'dbh'}->do(
+                'INSERT INTO `config` (`name`,`value`) VALUES (?,?),(?,?),(?,?) ON DUPLICATE KEY UPDATE `name` = `name`',
+                undef, 'ROUNDCUBE_DES_KEY', $encKey, 'ROUNDCUBE_SQL_USER', $encUser, 'ROUNDCUBE_SQL_USER_PASSWD', $encPasswd
+            );
+        } else {
+        		$self->{'dbh'}->do(
+                'INSERT INTO `config` (`server_id`, `name`,`value`) VALUES (?,?,?),(?,?,?),(?,?,?) ON DUPLICATE KEY UPDATE `name` = `name`',
+                undef,
+                $::imscpConfig{'SERVER_ID'}, 'ROUNDCUBE_DES_KEY', 	      $encKey,
+                $::imscpConfig{'SERVER_ID'}, 'ROUNDCUBE_SQL_USER', 		  $encUser,
+                $::imscpConfig{'SERVER_ID'}, 'ROUNDCUBE_SQL_USER_PASSWD', $encPasswd
+            );
+        }
 
         my $data = {
             DES_KEY           => $config{'ROUNDCUBE_DES_KEY'},
