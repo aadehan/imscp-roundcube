@@ -2,29 +2,30 @@
 
 /*
  +-----------------------------------------------------------------------+
- | localization/<lang>/messages.inc                                      |
- |                                                                       |
  | Localization file of the Roundcube Webmail client                     |
- | Copyright (C) 2005-2015, The Roundcube Dev Team                       |
+ |                                                                       |
+ | Copyright (C) The Roundcube Dev Team                                  |
  |                                                                       |
  | Licensed under the GNU General Public License version 3 or            |
  | any later version with exceptions for skins & plugins.                |
  | See the README file for a full license statement.                     |
- |                                                                       |
  +-----------------------------------------------------------------------+
 
  For translation see https://www.transifex.com/projects/p/roundcube-webmail/resource/messages/
 */
+
 $messages['errortitle']  = 'Vyskytla sa chyba!';
 $messages['loginfailed']  = 'Prihlasovanie bolo neúspešné.';
 $messages['cookiesdisabled'] = 'Váš internetový prehliadač nepodporuje cookies, ktoré sú potrebné na prihlásenie.';
 $messages['sessionerror'] = 'Vaša relácia nie je platná alebo vypršala jej platnosť.';
+$messages['cookiesmismatch'] = 'Bola zistená nezhoda cookie. Prosím vyčistite súbory cookies vo vašom prehliadači.';
 $messages['storageerror'] = 'Nepodarilo sa spojiť s úložným serverom.';
 $messages['servererror'] = 'Chyba servera!';
 $messages['servererrormsg'] = 'Chyba servera: $msg';
 $messages['accountlocked'] = 'Bolo vykonaných príliš veľa neúspešných pokusov o prihlásenie. Skúste to prosím neskôr.';
 $messages['connerror'] = 'Chyba pri pripájaní (nepodarilo sa spojiť so serverom)!';
 $messages['dberror'] = 'Chyba databázy!';
+$messages['dbconnerror'] = 'Nemožno sa pripojiť k databáze!';
 $messages['windowopenerror'] = 'Bolo zablokované vyskakovacie okno!';
 $messages['requesttimedout'] = 'Čas na vykonanie požiadavky uplynul';
 $messages['errorreadonly'] = 'Akciu nemožno vykonať. Priečinok je určený len na čítanie.';
@@ -34,7 +35,7 @@ $messages['erroroverquotadelete'] = 'Nie je dostatok voľného miesta. Vymažte 
 $messages['invalidrequest'] = 'Neplatná požiadavka! Neuložili sa žiadne údaje.';
 $messages['invalidhost'] = 'Neplatný názov servera.';
 $messages['nomessagesfound'] = 'V tomto priečinku nie je žiadna správa.';
-$messages['loggedout'] = 'Odhlásenie prebehlo úspešne. Dovidenia.';
+$messages['loggedout'] = 'Relácia bola úspešne prerušená. Dovidenia!';
 $messages['mailboxempty'] = 'Schránka je prázdna';
 $messages['nomessages'] = 'Žiadne správy';
 $messages['refreshing'] = 'Obnovuje sa...';
@@ -51,11 +52,15 @@ $messages['messagesaved'] = 'Správa bola uložená ako koncept.';
 $messages['successfullysaved'] = 'Ukladanie bolo úspešne dokončené.';
 $messages['savingresponse'] = 'Ukladanie textu odpovede...';
 $messages['deleteresponseconfirm'] = 'Naozaj chcete vymazať text odpovede?';
+$messages['nocontactselected'] = 'Ešte ste nevybrali žiadny kontakt.';
 $messages['addedsuccessfully'] = 'Kontakt bol pridaný do adresára.';
 $messages['contactexists'] = 'Kontakt s takouto e-mailovou adresou už existuje.';
 $messages['contactnameexists'] = 'Kontakt s takýmto menom už existuje.';
 $messages['blockedimages'] = 'Kvôli ochrane vášho súkromia boli v tejto správe zablokované vzdialené obrázky.';
 $messages['blockedresources'] = 'Kvôli ochrane vášho súkromia boli zablokované vzdialené zdroje údajov.';
+$messages['suspiciousemail'] = 'Táto správa obsahuje podozrivé e-mailové adresy, ktoré môžu byť podvodné.';
+$messages['bccemail'] = 'Správy odoslané ďalej obsahujú utajených príjemcov (skrytú kópiu).';
+$messages['bouncehint'] = 'Správa sa odošle bez akýchkoľvek úprav, napríklad s použitím pôvodného tela, hlavičiek a príjemcov.';
 $messages['encryptedmessage'] = 'Táto správa je zašifrovaná, a nie je možné ju zobraziť. Prepáčte!';
 $messages['externalmessagedecryption'] = 'Táto správa je zašifrovaná a dešifrovať ju môžete pomocou rozšírenia vášho prehliadača.';
 $messages['nopubkeyfor'] = 'Pre $email sa nenašiel žiadny platný verejný kľúč';
@@ -63,11 +68,11 @@ $messages['nopubkeyforsender'] = 'Pre vašu identitu odosielateľa sa nenašiel 
 $messages['encryptnoattachments'] = 'Prílohy, ktoré ste už uložili na server, nie je možné zašifrovať. Prosím pridajte ich znovu, v editore pre šifrovanie.';
 $messages['searchpubkeyservers'] = 'Chcete vyhľadať servery s verejným kľúčom pre chýbajúce kľúče?';
 $messages['encryptpubkeysfound'] = 'Našli sa nasledujúce verejné kľúče:';
-$messages['keyservererror'] = 'Nepodarilo sa získať kľúč zo servera pre kľúče';
-$messages['keyimportsuccess'] = 'Verejný kľúč $key bol úspešne importovaný do okruhu vašich kľúčov';
+$messages['keyservererror'] = 'Nepodarilo sa získať kľúč zo servera pre kľúče.';
+$messages['keyimportsuccess'] = 'Verejný kľúč $key bol úspešne importovaný do okruhu vašich kľúčov.';
 $messages['nocontactsfound'] = 'Nenašli sa žiadne kontakty.';
 $messages['contactnotfound'] = 'Požadovaný kontakt sa nenašiel.';
-$messages['contactsearchonly'] = 'Zadajte nejaký výraz pre vyhľadanie kontaktov';
+$messages['contactsearchonly'] = 'Ak chcete vidieť kontakty z vybraného adresára, musíte použiť vyhľadávací formulár.';
 $messages['sendingfailed'] = 'Nepodarilo sa odoslať správu.';
 $messages['senttooquickly'] = 'Počkajte $sec sekúnd pred odoslaním tejto správy.';
 $messages['errorsavingsent'] = 'Počas ukladania odoslanej správy sa vyskytla chyba.';
@@ -82,6 +87,7 @@ $messages['deletecontactconfirm']  = 'Naozaj chcete vymazať vybrané kontakty?'
 $messages['deletegroupconfirm']  = 'Naozaj chcete vymazať vybranú skupinu?';
 $messages['deletemessagesconfirm'] = 'Naozaj chcete vymazať vybrané správy?';
 $messages['deletefolderconfirm']  = 'Naozaj chcete vymazať tento priečinok?';
+$messages['movefolderconfirm']  = 'Naozaj chcete presunúť tento priečinok?';
 $messages['purgefolderconfirm']  = 'Naozaj chcete vyprázdniť tento priečinok?';
 $messages['contactdeleting'] = 'Vymazávajú sa kontakty...';
 $messages['groupdeleting'] = 'Vymazáva sa skupina...';
@@ -94,6 +100,7 @@ $messages['noemailwarning'] = 'Prosím zadajte platnú e-mailovú adresu.';
 $messages['nonamewarning']  = 'Prosím zadajte meno.';
 $messages['nopagesizewarning'] = 'Prosím zadajte počet záznamov na stranu.';
 $messages['nosenderwarning'] = 'Prosím zadajte e-mailovú adresu odosielateľa.';
+$messages['recipientsadded'] = 'Pridanie príjemcu/príjemcov bolo úspešné.';
 $messages['norecipientwarning'] = 'Prosím zadajte aspoň jedného príjemcu.';
 $messages['disclosedrecipwarning'] = 'Všetci používatelia navzájom uvidia svoje e-mailové adresy. Ak si to neželáte a chcete chrániť ich súkromie, použite pole Skrytá kópia.';
 $messages['disclosedreciptitle'] = 'Priveľa verejných príjemcov';
@@ -115,15 +122,17 @@ $messages['folderdeleted'] = 'Priečinok bol úspešne vymazaný.';
 $messages['foldersubscribed'] = 'Prihlásenie k priečinku bolo úspešné.';
 $messages['folderunsubscribed'] = 'Odhlásenie z priečinka bolo úspešné.';
 $messages['folderpurged'] = 'Priečinok bol úspešne vyprázdnený.';
-$messages['folderexpunged'] = 'Komprimovanie obsahu priečinka bolo úspešné.';
+$messages['folderexpunged'] = 'Priečinok bol úspešne skomprimovaný.';
 $messages['deletedsuccessfully'] = 'Vymazanie bolo úspešné.';
 $messages['converting'] = 'Odstraňuje sa formátovanie...';
 $messages['messageopenerror'] = 'Správu nemožno načítať zo servera.';
 $messages['filelinkerror'] = 'Nepodarilo sa priložiť súbor.';
 $messages['fileuploaderror'] = 'Nahrávanie súboru bolo neúspešné.';
+$messages['csvfilemismatch'] = 'Import viacerých súborov CSV s rôznymi poliami nie je podporovaný.';
 $messages['filesizeerror'] = 'Nahraný súbor prekročil maximálnu veľkosť $size.';
 $messages['filecounterror'] = 'Naraz je možné vykonať upload max. $count súborov.';
 $messages['msgsizeerror'] = 'Nepodarilo sa pripojiť súbor. Bola prekročená max. veľkosť správy ($size).';
+$messages['msgsizeerrorfwd'] = 'Došlo k prekročeniu maximálnej veľkosti správy ($size). Počet správ, ktoré neboli pripojené: $num.';
 $messages['copysuccess'] = 'Počet úspešne skopírovaných kontaktov: $nr.';
 $messages['movesuccess'] = 'Počet úspešne presunutých kontaktov: $nr.';
 $messages['copyerror'] = 'Kontakty nemožno kopírovať.';
@@ -163,6 +172,7 @@ $messages['smtpautherror'] = 'Chyba SMTP ($code): Neúspešná autentifikácia.'
 $messages['smtpfromerror'] = 'Chyba SMTP ($code): Nemožno nastaviť odosielateľa "$from" ($msg).';
 $messages['smtptoerror'] = 'Chyba SMTP ($code): Nemožno pridať príjemcu "$to" ($msg).';
 $messages['smtprecipientserror'] = 'Chyba SMTP: Nemožno spracovať zoznam príjemcov.';
+$messages['smtputf8error'] = 'Chyba SMTP: server nepodporuje Unicode v e-mailovej adrese.';
 $messages['smtpsizeerror'] = 'Chyba SMTP: veľkosť správy presahuje limit servera ($limit)';
 $messages['smtperror'] = 'Chyba SMTP: $msg';
 $messages['emailformaterror'] = 'Neplatná e-mailová adresa: $email';
@@ -211,3 +221,12 @@ $messages['clicktoresumesession'] = 'Ak chcete pokračovať v predchádzajúcej 
 $messages['errcomposesession'] = 'Chyba relácie pre vytváranie správy';
 $messages['errcomposesessionexplain'] = 'Požadovaná relácia pre vytvorenie správy sa nenašla';
 $messages['clicktocompose'] = 'Ak chcete vytvoriť novú správu, kliknite sem';
+$messages['nosupporterror'] = 'Táto funkcia nie je podporovaná vaším webovým prehliadačom.';
+$messages['siginserted'] = 'Podpis bol úspešne vložený.';
+$messages['responseinserted'] = 'Odpoveď bola úspešne vložená.';
+$messages['noresponsesavailable'] = 'Nie sú dostupné žiadne odpovede';
+$messages['listempty'] = 'Zoznam je prázdny.';
+$messages['listusebutton'] = 'Na pridanie nového záznamu použite tlačidlo Vytvoriť.';
+$messages['keypaircreatesuccess'] = 'Pre identitu $identity bol úspešne vytvorený nový pár kľúčov.';
+$messages['emptyattachment'] = 'Zdá sa, že táto príloha je prázdna.<br>Prosím overte to u osoby, ktorá ju odoslala.';
+$messages['oauthloginfailed'] = 'Prihlásenie OAuth bolo neúspešné. Prosím skúste to znovu.';

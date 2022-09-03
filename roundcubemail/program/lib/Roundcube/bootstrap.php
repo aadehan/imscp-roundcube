@@ -2,8 +2,9 @@
 
 /**
  +-----------------------------------------------------------------------+
- | This file is part of the Roundcube PHP suite                          |
- | Copyright (C) 2005-2017, The Roundcube Dev Team                       |
+ | This file is part of the Roundcube webmail client                     |
+ |                                                                       |
+ | Copyright (C) The Roundcube Dev Team                                  |
  |                                                                       |
  | Licensed under the GNU General Public License version 3 or            |
  | any later version with exceptions for skins & plugins.                |
@@ -24,20 +25,24 @@
  * @subpackage Core
  */
 
-$config = array(
-    'error_reporting'         => E_ALL & ~E_NOTICE & ~E_STRICT,
+$config = [
+    'error_reporting' => E_ALL & ~E_NOTICE & ~E_STRICT,
+    'display_errors'  => false,
+    'log_errors'      => true,
     // Some users are not using Installer, so we'll check some
     // critical PHP settings here. Only these, which doesn't provide
     // an error/warning in the logs later. See (#1486307).
-    'mbstring.func_overload'  => 0,
-);
+    'mbstring.func_overload' => 0,
+];
 
 // check these additional ini settings if not called via CLI
 if (php_sapi_name() != 'cli') {
-    $config += array(
+    $config += [
         'suhosin.session.encrypt' => false,
         'file_uploads'            => true,
-    );
+        'session.auto_start'      => false,
+        'zlib.output_compression' => false,
+    ];
 }
 
 foreach ($config as $optname => $optval) {
@@ -53,8 +58,9 @@ foreach ($config as $optname => $optval) {
 }
 
 // framework constants
-define('RCUBE_VERSION', '1.3.15');
+define('RCUBE_VERSION', '1.5.3');
 define('RCUBE_CHARSET', 'UTF-8');
+define('RCUBE_TEMP_FILE_PREFIX', 'RCMTEMP');
 
 if (!defined('RCUBE_LIB_DIR')) {
     define('RCUBE_LIB_DIR', __DIR__ . '/');
@@ -77,12 +83,8 @@ if (!defined('RCUBE_LOCALIZATION_DIR')) {
 }
 
 // set internal encoding for mbstring extension
-if (function_exists('mb_internal_encoding')) {
-    mb_internal_encoding(RCUBE_CHARSET);
-}
-if (function_exists('mb_regex_encoding')) {
-    mb_regex_encoding(RCUBE_CHARSET);
-}
+mb_internal_encoding(RCUBE_CHARSET);
+mb_regex_encoding(RCUBE_CHARSET);
 
 // make sure the Roundcube lib directory is in the include_path
 $rcube_path = realpath(RCUBE_LIB_DIR . '..');
@@ -98,7 +100,7 @@ if (!preg_match($regexp, $path)) {
 spl_autoload_register('rcube_autoload');
 
 // set PEAR error handling (will also load the PEAR main class)
-PEAR::setErrorHandling(PEAR_ERROR_CALLBACK, 'rcube_pear_error');
+PEAR::setErrorHandling(PEAR_ERROR_CALLBACK, function($err) { rcube::raise_error($err, true); });
 
 
 /**
@@ -107,14 +109,18 @@ PEAR::setErrorHandling(PEAR_ERROR_CALLBACK, 'rcube_pear_error');
  * @param string $needle   Needle value
  * @param array  $heystack Array to search in
  *
- * @return boolean True if found, False if not
+ * @return bool True if found, False if not
  */
 function in_array_nocase($needle, $haystack)
 {
+    if (!is_string($needle) || !is_array($haystack)) {
+        return false;
+    }
+
     // use much faster method for ascii
     if (is_ascii($needle)) {
         foreach ((array) $haystack as $value) {
-            if (strcasecmp($value, $needle) === 0) {
+            if (is_string($value) && strcasecmp($value, $needle) === 0) {
                 return true;
             }
         }
@@ -122,7 +128,7 @@ function in_array_nocase($needle, $haystack)
     else {
         $needle = mb_strtolower($needle);
         foreach ((array) $haystack as $value) {
-            if ($needle === mb_strtolower($value)) {
+            if (is_string($value) && $needle === mb_strtolower($value)) {
                 return true;
             }
         }
@@ -143,6 +149,8 @@ function parse_bytes($str)
     if (is_numeric($str)) {
         return floatval($str);
     }
+
+    $bytes = 0;
 
     if (preg_match('/([0-9\.]+)\s*([a-z]*)/i', $str, $regs)) {
         $bytes = floatval($regs[1]);
@@ -167,18 +175,26 @@ function parse_bytes($str)
 
 /**
  * Make sure the string ends with a slash
+ *
+ * @param string $str A string
+ *
+ * @return string A string ending with a slash
  */
 function slashify($str)
 {
-  return unslashify($str).'/';
+    return unslashify($str) . '/';
 }
 
 /**
  * Remove slashes at the end of the string
+ *
+ * @param string $str A string
+ *
+ * @return string A string ending with no slash
  */
 function unslashify($str)
 {
-  return preg_replace('/\/+$/', '', $str);
+    return rtrim($str, '/');
 }
 
 /**
@@ -267,7 +283,7 @@ function abbreviate_string($str, $maxlength, $placeholder = '...', $ending = fal
  */
 function array_keys_recursive($array)
 {
-    $keys = array();
+    $keys = [];
 
     if (!empty($array) && is_array($array)) {
         foreach ($array as $key => $child) {
@@ -282,12 +298,35 @@ function array_keys_recursive($array)
 }
 
 /**
+ * Get first element from an array
+ *
+ * @param array $array Input array
+ *
+ * @return mixed First element if found, Null otherwise
+ */
+function array_first($array)
+{
+    if (is_array($array)) {
+        reset($array);
+        foreach ($array as $element) {
+            return $element;
+        }
+    }
+}
+
+/**
  * Remove all non-ascii and non-word chars except ., -, _
+ *
+ * @param string $str          A string
+ * @param bool   $css_id       The result may be used as CSS identifier
+ * @param string $replace_with Replacement character
+ *
+ * @return string Clean string
  */
 function asciiwords($str, $css_id = false, $replace_with = '')
 {
     $allowed = 'a-z0-9\_\-' . (!$css_id ? '\.' : '');
-    return preg_replace("/[^$allowed]/i", $replace_with, $str);
+    return preg_replace("/[^$allowed]+/i", $replace_with, $str);
 }
 
 /**
@@ -296,7 +335,7 @@ function asciiwords($str, $css_id = false, $replace_with = '')
  * @param string $str           String to check
  * @param bool   $control_chars Includes control characters
  *
- * @return bool
+ * @return bool True if the string contains ASCII-only, False otherwise
  */
 function is_ascii($str, $control_chars = true)
 {
@@ -360,64 +399,18 @@ function format_email($email)
 function version_parse($version)
 {
     return str_replace(
-        array('-stable', '-git'),
-        array('.0', '.99'),
+        ['-stable', '-git'],
+        ['.0', '.99'],
         $version
     );
 }
 
 /**
- * intl replacement functions
- */
-
-if (!function_exists('idn_to_utf8'))
-{
-    function idn_to_utf8($domain)
-    {
-        static $idn, $loaded;
-
-        if (!$loaded) {
-            $idn    = new Net_IDNA2();
-            $loaded = true;
-        }
-
-        if ($idn && $domain && preg_match('/(^|\.)xn--/i', $domain)) {
-            try {
-                $domain = $idn->decode($domain);
-            }
-            catch (Exception $e) {
-            }
-        }
-
-        return $domain;
-    }
-}
-
-if (!function_exists('idn_to_ascii'))
-{
-    function idn_to_ascii($domain)
-    {
-        static $idn, $loaded;
-
-        if (!$loaded) {
-            $idn    = new Net_IDNA2();
-            $loaded = true;
-        }
-
-        if ($idn && $domain && preg_match('/[^\x20-\x7E]/', $domain)) {
-            try {
-                $domain = $idn->encode($domain);
-            }
-            catch (Exception $e) {
-            }
-        }
-
-        return $domain;
-    }
-}
-
-/**
  * Use PHP5 autoload for dynamic class loading
+ *
+ * @param string $classname Class name
+ *
+ * @return bool True when the class file has been found
  *
  * @todo Make Zend, PEAR etc play with this
  * @todo Make our classes conform to a more straight forward CS.
@@ -425,6 +418,7 @@ if (!function_exists('idn_to_ascii'))
 function rcube_autoload($classname)
 {
     if (strpos($classname, 'rcube') === 0) {
+        $classname = preg_replace('/^rcube_(cache|db|session|spellchecker)_/', '\\1/', $classname);
         $classname = 'Roundcube/' . $classname;
     }
     else if (strpos($classname, 'html_') === 0 || $classname === 'html') {
@@ -452,18 +446,4 @@ function rcube_autoload($classname)
     }
 
     return false;
-}
-
-/**
- * Local callback function for PEAR errors
- */
-function rcube_pear_error($err)
-{
-    $msg = sprintf("ERROR: %s (%s)", $err->getMessage(), $err->getCode());
-
-    if ($info = $err->getUserinfo()) {
-        $msg .= ': ' . $info;
-    }
-
-    error_log($msg, 0);
 }
