@@ -81,6 +81,11 @@ sub preinstall
             composer_working_dir => "$CWD/vendor/imscp/roundcube/roundcubemail",
             composer_json        => 'composer.json-dist'
         );
+        
+        if (defined $self->{'repo'} && @{$self->{'repo'}}) {
+            push @{$composer->getComposerJson(TRUE)->{'repositories'}},  @{$self->{'repo'}};
+            $composer->dumpComposerJson();
+        }
 
         my $stdRoutine = sub {
             chomp( $_[0] );
@@ -112,7 +117,10 @@ EOT
                 'classmap-authoritative' => JSON::false,
                 'preferred-install'      => 'dist',
                 'process-timeout'        => 5000,
-                'use-include-path'       => JSON::false
+                'use-include-path'       => JSON::false,
+                'allow-plugins'          => {
+                    'imscp/roundcube-plugin-installer' => JSON::true
+                }
             },
             'dev',
             JSON::true
@@ -440,6 +448,7 @@ sub _init
 
     $self->{'events'} = iMSCP::EventManager->getInstance();
     $self->{'dbh'} = lazy { iMSCP::Database->factory()->getRawDb(); };
+    $self->{'repo'}  = undef;
     $self;
 }
 
