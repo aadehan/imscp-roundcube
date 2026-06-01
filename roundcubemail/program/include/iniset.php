@@ -1,6 +1,8 @@
 <?php
 
-/**
+use GuzzleHttp\Cookie\FileCookieJar;
+
+/*
  +-----------------------------------------------------------------------+
  | This file is part of the Roundcube Webmail client                     |
  |                                                                       |
@@ -19,8 +21,12 @@
  +-----------------------------------------------------------------------+
 */
 
+if (PHP_VERSION_ID < 70300) {
+    die("Unsupported PHP version. Required PHP >= 7.3.");
+}
+
 // application constants
-define('RCMAIL_VERSION', '1.5.3');
+define('RCMAIL_VERSION', '1.6.16');
 define('RCMAIL_START', microtime(true));
 
 if (!defined('INSTALL_PATH')) {
@@ -39,7 +45,7 @@ define('RCUBE_INSTALL_PATH', INSTALL_PATH);
 define('RCUBE_CONFIG_DIR',  RCMAIL_CONFIG_DIR.'/');
 
 // Show basic error message on fatal PHP error
-register_shutdown_function('rcmail_fatal_error');
+register_shutdown_function('rcmail_error_handler');
 
 // RC include folders MUST be included FIRST to avoid other
 // possible not compatible libraries (i.e PEAR) to be included
@@ -76,6 +82,13 @@ require_once 'Roundcube/bootstrap.php';
 // register autoloader for rcmail app classes
 spl_autoload_register('rcmail_autoload');
 
+// disable use of dangerous dependencies
+spl_autoload_register(static function ($classname) {
+    if ($classname === FileCookieJar::class) {
+        throw new \Exception("{$classname} is forbidden for security reasons.");
+    }
+}, true, true);
+
 /**
  * PHP5 autoloader routine for dynamic class loading
  */
@@ -99,27 +112,37 @@ function rcmail_autoload($classname)
 }
 
 /**
- * Show basic error message on fatal PHP error
+ * Show a generic error message on fatal PHP error
  */
-function rcmail_fatal_error()
+function rcmail_error_handler()
 {
     $error = error_get_last();
 
     if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE)) {
-        if (php_sapi_name() === 'cli') {
-            echo "Fatal error: Please check the Roundcube error log and/or server error logs for more information.\n";
-        }
-        elseif (!empty($_REQUEST['_remote'])) {
-            // Ajax request from UI
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['code' => 500, 'message' => "Internal Server Error"]);
-        }
-        else {
-            if (!defined('RCUBE_FATAL_ERROR_MSG')) {
-                define('RCUBE_FATAL_ERROR_MSG', INSTALL_PATH . 'program/resources/error.html');
-            }
-
-            echo file_get_contents(RCUBE_FATAL_ERROR_MSG);
-        }
+        rcmail_fatal_error();
     }
+}
+
+/**
+ * Raise a generic error message on error
+ */
+function rcmail_fatal_error()
+{
+    if (php_sapi_name() === 'cli') {
+        echo "Fatal error: Please check the Roundcube error log and/or server error logs for more information.\n";
+    }
+    elseif (!empty($_REQUEST['_remote'])) {
+        // Ajax request from UI
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['code' => 500, 'message' => "Internal Server Error"]);
+    }
+    else {
+        if (!defined('RCUBE_FATAL_ERROR_MSG')) {
+            define('RCUBE_FATAL_ERROR_MSG', INSTALL_PATH . 'program/resources/error.html');
+        }
+
+        echo file_get_contents(RCUBE_FATAL_ERROR_MSG);
+    }
+
+    exit;
 }

@@ -26,7 +26,6 @@
  */
 
 $config = [
-    'error_reporting' => E_ALL & ~E_NOTICE & ~E_STRICT,
     'display_errors'  => false,
     'log_errors'      => true,
     // Some users are not using Installer, so we'll check some
@@ -58,7 +57,7 @@ foreach ($config as $optname => $optval) {
 }
 
 // framework constants
-define('RCUBE_VERSION', '1.5.3');
+define('RCUBE_VERSION', '1.6.16');
 define('RCUBE_CHARSET', 'UTF-8');
 define('RCUBE_TEMP_FILE_PREFIX', 'RCMTEMP');
 
@@ -100,14 +99,15 @@ if (!preg_match($regexp, $path)) {
 spl_autoload_register('rcube_autoload');
 
 // set PEAR error handling (will also load the PEAR main class)
-PEAR::setErrorHandling(PEAR_ERROR_CALLBACK, function($err) { rcube::raise_error($err, true); });
-
+if (class_exists('PEAR')) {
+    PEAR::setErrorHandling(PEAR_ERROR_CALLBACK, function($err) { rcube::raise_error($err, true); });
+}
 
 /**
  * Similar function as in_array() but case-insensitive with multibyte support.
  *
  * @param string $needle   Needle value
- * @param array  $heystack Array to search in
+ * @param array  $haystack Array to search in
  *
  * @return bool True if found, False if not
  */
@@ -297,19 +297,21 @@ function array_keys_recursive($array)
     return $keys;
 }
 
-/**
- * Get first element from an array
- *
- * @param array $array Input array
- *
- * @return mixed First element if found, Null otherwise
- */
-function array_first($array)
-{
-    if (is_array($array)) {
-        reset($array);
-        foreach ($array as $element) {
-            return $element;
+if (!function_exists('array_first')) {
+    /**
+     * Get first element from an array
+     *
+     * @param array $array Input array
+     *
+     * @return mixed First element if found, Null otherwise
+     */
+    function array_first($array)
+    {
+        if (is_array($array)) {
+            reset($array);
+            foreach ($array as $element) {
+                return $element;
+            }
         }
     }
 }
@@ -326,7 +328,7 @@ function array_first($array)
 function asciiwords($str, $css_id = false, $replace_with = '')
 {
     $allowed = 'a-z0-9\_\-' . (!$css_id ? '\.' : '');
-    return preg_replace("/[^$allowed]+/i", $replace_with, $str);
+    return preg_replace("/[^$allowed]+/i", $replace_with, (string) $str);
 }
 
 /**
@@ -340,7 +342,7 @@ function asciiwords($str, $css_id = false, $replace_with = '')
 function is_ascii($str, $control_chars = true)
 {
     $regexp = $control_chars ? '/[^\x00-\x7F]/' : '/[^\x20-\x7E]/';
-    return preg_match($regexp, $str) ? false : true;
+    return preg_match($regexp, (string) $str) ? false : true;
 }
 
 /**
@@ -394,7 +396,7 @@ function format_email($email)
  *
  * @param string $version Version number string
  *
- * @param return Version number string
+ * @return string Version number string
  */
 function version_parse($version)
 {

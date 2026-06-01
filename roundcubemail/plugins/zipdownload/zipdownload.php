@@ -72,23 +72,15 @@ class zipdownload extends rcube_plugin
                     '_action' => 'plugin.zipdownload.attachments',
                     '_mbox'   => $rcmail->output->get_env('mailbox'),
                     '_uid'    => $rcmail->output->get_env('uid'),
-                ], false, false, true);
+                ],
+                false, false, true
+            );
 
-            $link = html::a(
+            // append the link to the attachments list
+            $p['content'] .= html::a(
                 ['href' => $href, 'class' => 'button zipdownload'],
                 rcube::Q($this->gettext('downloadall'))
             );
-
-            // append link to attachments list, slightly different in some skins
-            switch (rcmail::get_instance()->config->get('skin')) {
-                case 'classic':
-                    $p['content'] = str_replace('</ul>', html::tag('li', ['class' => 'zipdownload'], $link) . '</ul>', $p['content']);
-                    break;
-
-                default:
-                    $p['content'] .= $link;
-                    break;
-            }
 
             $this->include_stylesheet($this->local_skin_path() . '/zipdownload.css');
         }
@@ -106,11 +98,11 @@ class zipdownload extends rcube_plugin
 
         $rcmail  = rcmail::get_instance();
         $menu    = [];
-        $ul_attr = ['role' => 'menu', 'aria-labelledby' => 'aria-label-zipdownloadmenu'];
-
-        if ($rcmail->config->get('skin') != 'classic') {
-            $ul_attr['class'] = 'toolbarmenu menu';
-        }
+        $ul_attr = [
+            'role' => 'menu',
+            'aria-labelledby' => 'aria-label-zipdownloadmenu',
+            'class' => 'toolbarmenu menu',
+        ];
 
         foreach (['eml', 'mbox', 'maildir'] as $type) {
             $menu[] = html::tag('li', null, $rcmail->output->button([
@@ -143,7 +135,7 @@ class zipdownload extends rcube_plugin
 
         $tmpfname  = rcube_utils::temp_filename('zipdownload');
         $tempfiles = [$tmpfname];
-        $message   = new rcube_message(rcube_utils::get_input_value('_uid', rcube_utils::INPUT_GET));
+        $message   = new rcube_message(rcube_utils::get_input_string('_uid', rcube_utils::INPUT_GET));
 
         // open zip file
         $zip = new ZipArchive();
@@ -233,7 +225,7 @@ class zipdownload extends rcube_plugin
     /**
      * Helper method to packs all the given messages into a zip archive
      *
-     * @param array List of message UIDs to download
+     * @param array $messageset List of message UIDs to download
      */
     private function _download_messages($messageset)
     {
@@ -241,7 +233,7 @@ class zipdownload extends rcube_plugin
 
         $rcmail    = rcmail::get_instance();
         $imap      = $rcmail->get_storage();
-        $mode      = rcube_utils::get_input_value('_mode', rcube_utils::INPUT_POST);
+        $mode      = rcube_utils::get_input_string('_mode', rcube_utils::INPUT_POST);
         $limit     = $rcmail->config->get('zipdownload_selection', $this->default_limit);
         $limit     = $limit !== true ? parse_bytes($limit) : -1;
         $delimiter = $imap->get_hierarchy_delimiter();
@@ -323,6 +315,7 @@ class zipdownload extends rcube_plugin
         $zip = new ZipArchive();
         $zip->open($tmpfname, ZIPARCHIVE::OVERWRITE);
 
+        $last_key = array_key_last($messages);
         foreach ($messages as $key => $value) {
             list($uid, $mbox) = explode(':', $key, 2);
             $imap->set_folder($mbox);
@@ -335,7 +328,15 @@ class zipdownload extends rcube_plugin
                 $filter = stream_filter_append($tmpfp, 'mbox_filter');
                 $imap->get_raw_body($uid, $tmpfp);
                 stream_filter_remove($filter);
-                fwrite($tmpfp, "\r\n");
+
+                // Make sure the delimiter is a double \r\n
+                $fstat = fstat($tmpfp);
+                if (stream_get_contents($tmpfp, 2, $fstat['size'] - 2) != "\r\n") {
+                    fwrite($tmpfp, "\r\n");
+                }
+                if ($key != $last_key) {
+                    fwrite($tmpfp, "\r\n");
+                }
             }
             else { // maildir
                 $tmpfn = rcube_utils::temp_filename('zipmessage');
@@ -402,7 +403,8 @@ class zipdownload extends rcube_plugin
 
 class zipdownload_mbox_filter extends php_user_filter
 {
-    function filter($in, $out, &$consumed, $closing)
+    #[ReturnTypeWillChange]
+    public function filter($in, $out, &$consumed, $closing)
     {
         while ($bucket = stream_bucket_make_writeable($in)) {
             // messages are read line by line

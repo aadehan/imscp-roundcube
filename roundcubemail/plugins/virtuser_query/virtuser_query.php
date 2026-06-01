@@ -63,19 +63,19 @@ class virtuser_query extends rcube_plugin
     {
         $dbh = $this->get_dbh();
 
-        $sql_result = $dbh->query(preg_replace('/%u/', $dbh->escape($p['user']), $this->config['email']));
-        $result     = [];
+        $sql_result = $dbh->query(str_replace('%u', $dbh->escape($p['user']), $this->config['email']));
+        $result = [];
 
         while ($sql_arr = $dbh->fetch_array($sql_result)) {
             if (strpos($sql_arr[0], '@')) {
                 if (!empty($p['extended']) && count($sql_arr) > 1) {
                     $result[] = [
                         'email'          => rcube_utils::idn_to_ascii($sql_arr[0]),
-                        'name'           => isset($sql_arr[1]) ? $sql_arr[1] : '',
-                        'organization'   => isset($sql_arr[2]) ? $sql_arr[2] : '',
+                        'name'           => $sql_arr[1] ?? '',
+                        'organization'   => $sql_arr[2] ?? '',
                         'reply-to'       => isset($sql_arr[3]) ? rcube_utils::idn_to_ascii($sql_arr[3]) : '',
                         'bcc'            => isset($sql_arr[4]) ? rcube_utils::idn_to_ascii($sql_arr[4]) : '',
-                        'signature'      => isset($sql_arr[5]) ? $sql_arr[5] : '',
+                        'signature'      => $sql_arr[5] ?? '',
                         'html_signature' => isset($sql_arr[6]) ? intval($sql_arr[6]) : 0,
                     ];
                 }
@@ -101,7 +101,7 @@ class virtuser_query extends rcube_plugin
     {
         $dbh = $this->get_dbh();
 
-        $sql_result = $dbh->query(preg_replace('/%m/', $dbh->escape($p['email']), $this->config['user']));
+        $sql_result = $dbh->query(str_replace('%m', $dbh->escape($p['email']), $this->config['user']));
 
         if ($sql_arr = $dbh->fetch_array($sql_result)) {
             $p['user'] = $sql_arr[0];
@@ -117,7 +117,7 @@ class virtuser_query extends rcube_plugin
     {
         $dbh = $this->get_dbh();
 
-        $sql_result = $dbh->query(preg_replace('/%u/', $dbh->escape($p['user']), $this->config['host']));
+        $sql_result = $dbh->query(str_replace('%u', $dbh->escape($p['user']), $this->config['host']));
 
         if ($sql_arr = $dbh->fetch_array($sql_result)) {
             $p['host'] = $sql_arr[0];
@@ -133,7 +133,7 @@ class virtuser_query extends rcube_plugin
     {
         $dbh = $this->get_dbh();
 
-        $sql_result = $dbh->query(preg_replace('/%u/', $dbh->escape($p['user']), $this->config['alias']));
+        $sql_result = $dbh->query(str_replace('%u', $dbh->escape($p['user']), $this->config['alias']));
 
         if ($sql_arr = $dbh->fetch_array($sql_result)) {
             $p['user'] = $sql_arr[0];

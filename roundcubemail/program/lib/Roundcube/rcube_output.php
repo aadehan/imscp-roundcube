@@ -99,7 +99,7 @@ abstract class rcube_output
      */
     public function get_env($name)
     {
-        return isset($this->env[$name]) ? $this->env[$name] : null;
+        return $this->env[$name] ?? null;
     }
 
     /**
@@ -160,7 +160,7 @@ abstract class rcube_output
     /**
      * Send header with expire date 30 days in future
      *
-     * @param int Expiration time in seconds
+     * @param int $offset Expiration time in seconds
      */
     public function future_expire_header($offset = 2600000)
     {
@@ -212,7 +212,7 @@ abstract class rcube_output
     }
 
     /**
-     * Send headers related to file downloads
+     * Send headers related to file downloads.
      *
      * @param string $filename File name
      * @param array  $params   Optional parameters:
@@ -225,38 +225,69 @@ abstract class rcube_output
      */
     public function download_headers($filename, $params = [])
     {
+        // For security reasons we validate type, filename and charset params.
+        // Some HTTP servers might drop a header that is malformed or very long, this then
+        // can lead to web browsers unintentionally executing javascript code in the body.
+
         if (empty($params['disposition'])) {
             $params['disposition'] = 'attachment';
         }
 
-        if ($params['disposition'] == 'inline' && stripos($params['type'], 'text') === 0) {
-            $params['type'] .= '; charset=' . ($params['type_charset'] ?: $this->charset);
+        $ctype       = 'application/octet-stream';
+        $disposition = $params['disposition'];
+
+        if (!empty($params['type']) && is_string($params['type']) && strlen($params['type']) < 256
+            && preg_match('/^[a-z0-9!#$&.+^_-]+\/[a-z0-9!#$&.+^_-]+$/i', $params['type'])
+        ) {
+            $ctype = strtolower($params['type']);
         }
 
-        header("Content-Type: " . (!empty($params['type']) ? $params['type'] : "application/octet-stream"));
+        // Send unsafe content as plain text
+        if ($disposition == 'inline') {
+            if ($ctype != 'image/svg+xml' && preg_match('~(javascript|jscript|ecmascript|xml|html|text/)~', $ctype)) {
+                $ctype = 'text/plain';
+            }
+
+            if (strpos($ctype, 'text') === 0) {
+                $charset = $this->charset;
+                if (!empty($params['type_charset']) && rcube_charset::is_valid($params['type_charset'])) {
+                    $charset = $params['type_charset'];
+                }
+
+                $ctype .= "; charset={$charset}";
+            }
+        }
+
+        if (is_string($filename) && strlen($filename) > 0 && strlen($filename) <= 1024) {
+            // For non-ascii characters we'll use RFC2231 syntax
+            if (!preg_match('/[^a-zA-Z0-9_.:,?;@+ -]/', $filename)) {
+                $disposition .= "; filename=\"{$filename}\"";
+            }
+            else {
+                $filename = rawurlencode($filename);
+                $charset  = $this->charset;
+                if (!empty($params['charset']) && rcube_charset::is_valid($params['charset'])) {
+                    $charset = $params['charset'];
+                }
+
+                $disposition .= "; filename*={$charset}''{$filename}";
+            }
+        }
+
+        header("Content-Disposition: {$disposition}");
+        header("Content-Type: {$ctype}");
 
         if ($params['disposition'] == 'attachment' && $this->browser->ie) {
             header("Content-Type: application/force-download");
         }
 
-        $disposition = "Content-Disposition: " . $params['disposition'];
-
-        // For non-ascii characters we'll use RFC2231 syntax
-        if (!preg_match('/[^a-zA-Z0-9_.:,?;@+ -]/', $filename)) {
-            $disposition .= sprintf("; filename=\"%s\"", $filename);
-        }
-        else {
-            $disposition .= sprintf("; filename*=%s''%s",
-                !empty($params['charset']) ? $params['charset'] : $this->charset,
-                rawurlencode($filename)
-            );
-        }
-
-        header($disposition);
-
         if (isset($params['length'])) {
             header("Content-Length: " . $params['length']);
         }
+
+        // Use strict security policy to make sure no javascript content is executed
+        // img-src is needed to be able to print attachment preview page
+        header("Content-Security-Policy: default-src 'none'; img-src 'self'");
 
         // don't kill the connection if download takes more than 30 sec.
         if (!array_key_exists('time_limit', $params)) {
@@ -336,7 +367,7 @@ abstract class rcube_output
                     $colcounts[$name] = 0;
                 }
                 $idx   = intval($colcounts[$name]++);
-                $value = isset($postvalue[$idx]) ? $postvalue[$idx] : null;
+                $value = $postvalue[$idx] ?? null;
             }
             else {
                 $value = $postvalue;
@@ -357,7 +388,7 @@ abstract class rcube_output
      */
     public static function json_serialize($input, $pretty = false, $inline = true)
     {
-        $options = JSON_UNESCAPED_SLASHES;
+        $options = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE;
 
         // JSON_HEX_TAG is needed for inlining JSON inside of the <script> tag
         // if input contains a html tag it will cause issues (#6207)
@@ -365,22 +396,8 @@ abstract class rcube_output
             $options |= JSON_HEX_TAG;
         }
 
-        // JSON_UNESCAPED_UNICODE in PHP < 7.1.0 does not escape U+2028 and U+2029
-        // which causes issues (#6187)
-        if (PHP_VERSION_ID >= 70100) {
-            $options |= JSON_UNESCAPED_UNICODE;
-        }
-
         if ($pretty) {
             $options |= JSON_PRETTY_PRINT;
-        }
-
-        // The input need to be valid UTF-8 to use json_encode() in PHP < 7.2
-        if (PHP_VERSION_ID >= 70200) {
-            $options |= JSON_INVALID_UTF8_IGNORE;
-        }
-        else {
-            $input = rcube_charset::clean($input);
         }
 
         return json_encode($input, $options);

@@ -59,8 +59,8 @@ class rcube_string_replacer
         $link_prefix = "([\w]+:\/\/|{$this->noword}[Ww][Ww][Ww]\.|^[Ww][Ww][Ww]\.)";
 
         $this->options         = $options;
-        $this->linkref_index   = '/\[([^\]#]+)\](:?\s*' . substr($this->pattern, 1, -1) . ')/';
-        $this->linkref_pattern = '/\[([^\]#]+)\]/';
+        $this->linkref_index   = '/\[([^<>\]#]+)\](:?\s*' . substr($this->pattern, 1, -1) . ')/';
+        $this->linkref_pattern = '/\[([^<>\]#]+)\]/';
         $this->link_pattern    = "/$link_prefix($utf_domain([$url1]*[$url2]+)*)/";
         $this->mailto_pattern  = "/("
             . "[-\w!\#\$%&*+~\/^`|{}=]+(?:\.[-\w!\#\$%&*+~\/^`|{}=]+)*"  // local-part
@@ -148,11 +148,11 @@ class rcube_string_replacer
 
         // Store the reference and its occurrence position
         $this->linkrefs[$key][] = [
-            isset($this->urls[$matches[3][0]]) ? $this->urls[$matches[3][0]] : null,
+            $this->urls[$matches[3][0]] ?? null,
             $matches[0][1]
         ];
 
-        return $this->get_replacement($this->add('['.$key.']')) . $matches[2][0];
+        return $this->get_replacement($this->add('[' . $key . ']')) . $matches[2][0];
     }
 
     /**
@@ -209,7 +209,7 @@ class rcube_string_replacer
      */
     protected function replace_callback($matches)
     {
-        return isset($this->values[$matches[1]]) ? $this->values[$matches[1]] : null;
+        return $this->values[$matches[1]] ?? null;
     }
 
     /**
@@ -221,6 +221,10 @@ class rcube_string_replacer
      */
     public function replace($str)
     {
+        if (!is_string($str)) {
+            return '';
+        }
+
         // search for patterns like links and e-mail addresses
         $str = preg_replace_callback($this->link_pattern, [$this, 'link_callback'], $str);
         $str = preg_replace_callback($this->mailto_pattern, [$this, 'mailto_callback'], $str);
